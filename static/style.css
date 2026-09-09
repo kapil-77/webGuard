@@ -1,0 +1,75 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: #0b0e13;
+  color: #d6dae3;
+}
+
+body {
+  width: 340px;
+  font: 12px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 320px;
+  padding: 16px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #7a8494;
+  font-size: 10px;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #e8ebf2;
+}
+
+.tick {
+  color: #3dcc86;
+}
+
+.tick::before {
+  content: "● ";
+}
+
+.placeholder {
+  border: 1px solid #1c2230;
+  border-radius: 10px;
+  padding: 18px;
+  background: #10151d;
+}
+
+.placeholder-title {
+  margin: 0 0 10px;
+  color: #9fb4d6;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.placeholder-copy {
+  margin: 0;
+  color: #c7cdd9;
+  font-size: 11px;
+}
+
+.placeholder-copy.dim {
+  margin-top: 8px;
+  color: #6b7385;
+}

@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "WebGuard",
+  "short_name": "WebGuard",
+  "version": "0.1.0",
+  "description": "Privacy-first, cross-browser web security intelligence. Analyzes the security posture of the current page entirely in your browser.",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_title": "WebGuard — Security Pulse",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
