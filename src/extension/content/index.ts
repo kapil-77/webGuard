@@ -1,10 +1,21 @@
+import { onMessage } from '../../browser/runtime/messaging';
+import { MESSAGE_TYPES } from '../../lib/protocol';
+import { observePage } from './observer';
+
 /**
- * Content script — passive and privacy-first.
+ * Content script — passive, privacy-first, and browser-agnostic.
  *
- * Registered at document_idle on every page (see manifests/base.json).
+ * Runs at document_idle on every page (see manifests/base.json). It exposes a
+ * single capability: when the background asks it (via tabs.sendMessage), it
+ * returns a raw observation of the page DOM. It never initiates messages,
+ * never touches storage, and never mutates the page.
  *
- * Milestone 0: deliberate no-op. Nothing is read from the page, nothing is
- * mutated, nothing is sent anywhere. Page observation and snapshot collection
- * will be added in a later milestone, and only behind the browser adapter
- * layer so this script never touches browser APIs directly.
+ * The response is a synchronous plain object, which is the most broadly
+ * compatible messaging pattern across Chromium, Firefox and Safari.
  */
+onMessage((message) => {
+  if (message.type !== MESSAGE_TYPES.COLLECT_PAGE_DATA) {
+    return undefined;
+  }
+  return observePage();
+});

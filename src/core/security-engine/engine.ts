@@ -1,13 +1,13 @@
 import type { Detector } from '../detectors/interface';
 import { DetectorRegistry } from '../detectors/registry';
 import type { Finding } from '../types/finding';
-import type { PageSnapshot } from '../types/page-snapshot';
+import type { PageSecurityData } from '../types/page-security-data';
 import type { SecurityReport } from '../types/security-report';
 import { sanitizeText } from '../../lib/sanitize';
 import { scoreFindings } from '../risk-scoring/scorer';
 
 /** Bumped whenever the engine contract or scoring math changes. */
-export const ENGINE_VERSION = '0.1.0';
+export const ENGINE_VERSION = '0.2.0';
 
 export interface AnalyzeOptions {
   /** Per-detector timeout in ms; isolates the report from hung detectors. */
@@ -20,7 +20,7 @@ const DEFAULT_DETECTOR_TIMEOUT_MS = 2_000;
  * The browser-agnostic security engine.
  *
  * Pipeline (ARCHITECTURE.md):
- *   PageSnapshot -> Detectors -> Finding[] -> RiskScore -> SecurityReport
+ *   PageSecurityData -> Detectors -> Finding[] -> RiskScore -> SecurityReport
  *
  * The engine owns no browser APIs and no display logic. It orchestrates
  * detectors, tolerates their failures, and delegates scoring.
@@ -38,7 +38,7 @@ export class SecurityEngine {
     return this.#registry.size;
   }
 
-  async analyze(snapshot: PageSnapshot): Promise<SecurityReport> {
+  async analyze(page: PageSecurityData): Promise<SecurityReport> {
     const detectors = this.#registry.getAll();
     const findings: Finding[] = [];
     let succeeded = 0;
@@ -46,7 +46,7 @@ export class SecurityEngine {
     for (const detector of detectors) {
       try {
         const result = await Promise.race([
-          Promise.resolve(detector.analyze(snapshot)),
+          Promise.resolve(detector.analyze(page)),
           new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error(`timed out after ${this.#detectorTimeoutMs}ms`)), this.#detectorTimeoutMs);
           }),
@@ -63,7 +63,7 @@ export class SecurityEngine {
     const score = scoreFindings(findings, { confidence });
 
     return {
-      snapshot,
+      page,
       findings,
       score,
       generatedAt: new Date().toISOString(),

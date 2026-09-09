@@ -1,3 +1,4 @@
+import type { PageSecurityData } from '../../core/types/page-security-data';
 import type { BrowserRuntimeApi } from '../runtime/namespace';
 
 export type BrowserId = 'chromium' | 'firefox' | 'webkit';
@@ -33,11 +34,27 @@ export interface WebGuardCapabilities {
  * A BrowserAdapter is the only type that knows browser specifics.
  *
  * Everything upstream (core engine, detectors, UI) depends on the adapter
- * interface and on normalized shapes (PageSnapshot, Finding, …) — never on
+ * interface and on normalized shapes (PageSecurityData, Finding, …) — never on
  * raw browser API objects.
  */
 export interface BrowserAdapter {
   readonly id: BrowserId;
   readonly capabilities: Readonly<WebGuardCapabilities>;
   readonly api: BrowserRuntimeApi;
+
+  /**
+   * Resolves the active tab in the current window.
+   * Returns `undefined` when no active tab could be resolved.
+   * The tab *id* requires no permission on any supported browser.
+   */
+  getActiveTabId(): Promise<number | undefined>;
+
+  /**
+   * Collects page security data from a tab and normalizes it into
+   * PageSecurityData. Implemented in the shared base adapter: asks the tab's
+   * content script for observed page data, then normalizes it.
+   *
+   * Throws UnsupportedPageError for non-analyzable pages (chrome://, …).
+   */
+  collectPageData(tabId: number): Promise<PageSecurityData>;
 }

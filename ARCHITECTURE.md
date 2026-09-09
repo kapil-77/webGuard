@@ -12,6 +12,28 @@ verified cross-browser research that motivated every compatibility decision.
 
 ## 1. The pipeline
 
+Implemented flow (M1 vertical slice):
+
+```
+Current Tab
+  ↓  (popup sends webguard/analyze to the background)
+Browser Adapter          adapter.getActiveTabId() → tab id (no permission needed)
+  ↓                      adapter.collectPageData(tab) → tabs.sendMessage(content script)
+Content Script           observePage() → raw ContentObservation (DOM scan)
+  ↓
+Normalized Page Data     normalizeObservation() → PageSecurityData
+  ↓
+Security Detectors       4 detectors (see §10) → normalized Finding[]
+  ↓
+Risk Scoring             scoreFindings() → 0..100 + status (SECURE/CAUTION/RISK/DANGEROUS)
+  ↓
+Security Report          SecurityReport (fully serializable)
+  ↓
+Popup UI                 renders score, status, expandable findings
+```
+
+Conceptual dependency diagram:
+
 ```
         ┌────────────────────────────┐
         │          BROWSER           │  Chrome / Edge · Firefox · Safari
@@ -21,17 +43,17 @@ verified cross-browser research that motivated every compatibility decision.
         │      BROWSER ADAPTERS      │  chromium/ · firefox/ · webkit/
         │    (only layer touching    │  → BrowserAdapter interface
         │     browser APIs, incl.    │  → capability matrix (WebGuardCapabilities)
-        │     namespace resolution)  │
+        │     namespace resolution)  │  → base: getActiveTabId + collectPageData
         └─────────────┬──────────────┘
-                      │ normalized shapes only (PageSnapshot, …)
+                      │ normalized shapes only (PageSecurityData, …)
         ┌─────────────▼──────────────┐
-        │   NORMALIZED BROWSER DATA  │  PageSnapshot { url, host, protocol, title }
-        └─────────────┬──────────────┘
+        │   NORMALIZED BROWSER DATA  │  PageSecurityData { url, protocol, origin,
+        └─────────────┬──────────────┘        hostname, usesHttps, resources[] }
         ┌─────────────▼──────────────┐
         │     SECURITY DETECTORS     │  registry-driven, browser-agnostic
         └─────────────┬──────────────┘  Finding { severity, category, title,
         ┌─────────────▼──────────────┐        description, evidence, scoreImpact }
-        │       RISK SCORING         │  scoreFindings() → 0..100
+        │       RISK SCORING         │  scoreFindings() → 0..100 + status
         └─────────────┬──────────────┘
         ┌─────────────▼──────────────┐
         │       SECURITY REPORT      │  SecurityReport (fully serializable)
@@ -45,7 +67,7 @@ verified cross-browser research that motivated every compatibility decision.
 
 1. `src/core/**` is **pure TypeScript**. It never imports from `src/browser`,
    `src/extension`, or any WebExtension API. Everything it needs arrives as
-   normalized data (`PageSnapshot`, `Finding`).
+   normalized data (`PageSecurityData`, `Finding`).
 2. `src/browser/**` is the **only** layer that touches `browser.*`/`chrome.*`,
    and only through `src/browser/runtime/namespace.ts` — the single module that
    references `globalThis`.
@@ -63,30 +85,39 @@ verified cross-browser research that motivated every compatibility decision.
 ```
 src/
 ├─ core/                      browser-agnostic engine (pure TS)
-│  ├─ types/                  Severity, FindingCategory, Finding, PageSnapshot,
-│  │                          RiskScore, SecurityReport
-│  ├─ detectors/              Detector interface + DetectorRegistry (0 detectors)
+│  ├─ types/                  Severity, FindingCategory, Finding, PageSecurityData,
+│  │                          ResourceInfo, RiskScore, SecurityReport
+│  ├─ detectors/              Https, MixedContent, InsecureForm, ThirdPartyResource
+│  │                          + DetectorRegistry + registry-factory
 │  ├─ security-engine/        SecurityEngine: runs detectors with isolation
 │  │                          + timeout, builds SecurityReport
-│  └─ risk-scoring/           scoreFindings(): Finding[] → RiskScore
+│  └─ risk-scoring/           scoreFindings() → 0..100·status, riskContribution()
 ├─ browser/
 │  ├─ runtime/
 │  │  ├─ namespace.ts         THE browser.* / chrome.* seam (+ fallback guard)
-│  │  └─ messaging.ts         validated send/onMessage primitives
+│  │  └─ messaging.ts         validated send/onMessage + tabs primitives
 │  ├─ adapter/
 │  │  ├─ interface.ts         BrowserAdapter + WebGuardCapabilities
-│  │  ├─ base.ts              shared adapter scaffolding
+│  │  ├─ base.ts              getActiveTabId + collectPageData (shared)
 │  │  └─ factory.ts           detectBrowserId() + createAdapter()
+│  ├─ collection/
+│  │  ├─ normalize.ts         ContentObservation → PageSecurityData
+│  │  └─ errors.ts            UnsupportedPageError / CollectionFailedError
 │  ├─ chromium/adapter.ts     ChromiumAdapter (service worker, MV3)
 │  ├─ firefox/adapter.ts      FirefoxAdapter  (background page, blocking possible)
 │  └─ webkit/adapter.ts       WebKitAdapter   (non-persistent, macOS-only webRequest)
 ├─ extension/
-│  ├─ background/index.ts     single stateless entry (all 3 browsers)
-│  ├─ content/index.ts        passive content script (deliberate no-op in M0)
-│  ├─ popup/popup.tsx         React popup entry
+│  ├─ background/index.ts     single stateless entry: analyze flow (all 3 browsers)
+│  ├─ content/
+│  │  ├─ observer.ts          DOM scan → ContentObservation (dumb by design)
+│  │  └─ index.ts             responds to webguard/collect-page-data only
+│  ├─ popup/
+│  │  ├─ popup.tsx            state machine + render
+│  │  ├─ views.tsx            ScoreCard, FindingList, states
+│  │  └─ client.ts            webguard/analyze client (no privileged APIs)
 │  └─ report/                 reserved
 ├─ components/ · hooks/       reserved for UI milestone
-└─ lib/                       validation.ts · sanitize.ts
+└─ lib/                       validation.ts · sanitize.ts · protocol.ts
 manifests/                    base.json + chromium/firefox/safari overlays
 scripts/build-manifests.mjs   per-target manifest assembly
 static/                       popup.html + style.css (copied verbatim)
@@ -168,9 +199,21 @@ wraps every payload in a validated envelope:
   silently.
 - Responses are correlated by the sender using `id`.
 
-Current message types (M0): `webguard/hello` — the background responds with the
-resolved adapter id + capability matrix. This proves the messaging + adapter
-layers without shipping features.
+Current message types (M1):
+
+| Type | Direction | Payload | Response |
+|---|---|---|---|
+| `webguard/analyze` | popup → background | — | `AnalyzeResponse { ok:true, report } \| { ok:false, reason, detail }` |
+| `webguard/collect-page-data` | background → content script | — | `ContentObservation { url, title, resources[] }` |
+
+All request/response shapes are declared and validated in `src/lib/protocol.ts`
+(typed request types, `parseAnalyzeResponse`, `isContentObservation`), so the
+UI never negotiates message shapes ad-hoc and never touches privileged APIs.
+
+**Transport note (async responses):** `runtime.onMessage` handlers may return
+a Promise on Firefox, Safari, and Chromium 148+ (the namespace/promise-return
+update shipped mid-2026). Older Chromium builds require the legacy
+`return true` + `sendResponse` pattern and are not supported by this slice.
 
 ---
 
@@ -192,14 +235,28 @@ interface Finding {
 }
 ```
 
-Scoring (`src/core/risk-scoring/scorer.ts`):
+Scoring (`src/core/risk-scoring/scorer.ts`) is a **pure, deterministic
+function** of the findings — no randomness:
 
 ```
 riskPoints  = Σ severityWeight(severity) × clamp01(scoreImpact)
   critical=40  high=25  medium=12  low=5  info=0
 score.value = max(0, round(100 − riskPoints))      // 100 = clean
+status      = statusForScore(score.value)
 confidence   = fraction of registered detectors that completed
 ```
+
+Status thresholds (`src/core/risk-scoring/security-status.ts`):
+
+| Score | Status |
+|---|---|
+| 90–100 | SECURE |
+| 70–89  | CAUTION |
+| 40–69  | RISK |
+| 0–39   | DANGEROUS |
+
+`riskContribution(finding)` exposes each finding's exact points so the popup
+can show an explainable "−N pts" per finding.
 
 Unknown severities are counted but never influence the score (defensive).
 The engine (`src/core/security-engine/engine.ts`) isolates detector failures
@@ -216,7 +273,7 @@ by `scripts/build-manifests.mjs` (deep merge; overlay wins):
 | Key | base.json | chromium.json | firefox.json | safari.json |
 |---|---|---|---|---|
 | `manifest_version` | `3` | — | — | — |
-| `permissions` | `["activeTab","storage"]` | — | — | — |
+| `permissions` | `["activeTab"]` | — | — | — |
 | `background` | (omitted) | `{ "service_worker": "background.js" }` | `{ "scripts": ["background.js"] }` | `{ "scripts": ["background.js"], "persistent": false }` |
 | `browser_specific_settings.gecko.id` | — | — | `webguard@webguard.dev` | — |
 | `action.default_popup` | `popup.html` | — | — | — |
@@ -258,22 +315,85 @@ matrix — **never** adding `if (browser === ...)` branches inside `core/`.
 
 ## 9. Security & privacy decisions
 
-1. **Minimal permissions.** `activeTab` + `storage` are all that is declared.
-   Nothing more will be added without a concrete feature + justification.
+1. **Minimal permissions.** `activeTab` is the only permission declared in M1.
+   The popup never touches `tabs.*`; page data comes from our own content
+   script (which needs no `tabs` permission). Nothing more will be added
+   without a concrete feature + justification.
 2. **No remote code execution.** Local bundles only; extension pages are CSP
    locked to `'self'`.
 3. **No hardcoded secrets.** There are none; any future API keys belong in
    user-controlled, local-only settings — never in the bundle.
 4. **Validate extension messages.** Envelopes are schema-checked before
-   dispatch; findings are schema-checked before persistence/rendering
+   dispatch; request/response shapes are validated by `src/lib/protocol.ts`;
+   findings are schema-checked before persistence/rendering
    (`src/lib/validation.ts`).
 5. **Sanitize displayed data.** Control chars stripped, whitespace collapsed,
    long values truncated, non-http(s) schemes neutralized
    (`src/lib/sanitize.ts`); React's default output escaping is the last line
    of defense.
-6. **Privacy-first, local by default.** `storage.local` only (no `sync`), no
-   network calls, no telemetry, passive content script, analysis only on
-   explicit user action.
+6. **Privacy-first, local by default.** No network calls, no telemetry, a
+   passive content script that only responds when asked, and analysis happens
+   only on explicit user action (opening the popup). `storage.*` is not used
+   in this slice; it will only return with an actual persistence feature.
 7. **Observation-only network posture.** WebGuard will never silently block
    requests across browsers; it reports. (This is also the only truly
    cross-browser-true network model.)
+
+---
+
+## 10. Implemented vertical slice (M1) — collection, detectors, limitations
+
+### Collection architecture
+
+```
+Popup (toolbar click)
+  └─ runtime.sendMessage("webguard/analyze")                    [client.ts]
+       └─ Background: adapter.getActiveTabId()                  [tabs.query, no permission]
+            └─ adapter.collectPageData(tabId)                   [tabs.sendMessage]
+                 └─ Content script: observePage()               [DOM scan]
+                      └─ normalizeObservation()                 [browser/collection]
+                           └─ SecurityEngine.analyze(page)      [core]
+                                └─ AnalyzeResponse -> popup
+```
+
+### Detector set (M1)
+
+| Detector | Observation | Finding on trigger | Severity / impact |
+|---|---|---|---|
+| `https` | page protocol | `https:enabled` / `https:disabled` | info / **critical 1.0** |
+| `mixed-content` | http sub-resources (scripts, imgs, iframes, links, media) on HTTPS page | `mixed-content:present` (aggregated count, evidence hosts) | **high 1.0** |
+| `insecure-form` | `<form action="http:…">` on HTTPS page | `insecure-form:present` (aggregated, evidence hosts) | **high 1.0** |
+| `third-party-resource` | resources whose origin ≠ page origin | `third-party:present` (count + origins) | info (0 impact) |
+
+Every detector returns **exactly one finding** so the popup renders a clean
+4-row list; no detector is ever silent. Positive/clean states are info
+findings ("✓ HTTPS", "✓ No mixed content", …).
+
+**Phantom cases avoided (no fake security intelligence):**
+- On plain HTTP pages, mixed-content and insecure-form report
+  "not assessed" instead of double-penalizing — the HTTPS detector already
+  owns transport risk there.
+- Anchor links (`<a href>`) are NOT loaded by the page and are not reported.
+- `data:`/`file:`/unparseable resources are dropped during normalization.
+- Evidence strings show `scheme://host` only — never query strings (privacy).
+
+### Documented browser-API limitations (this slice)
+
+1. **DOM-time observation only.** Resources are detected from the DOM *at the
+   moment the popup is opened*. Requests made later by JavaScript, plus
+   sub-frames, are invisible. Real network-level observation (webRequest) is a
+   separate milestone and differs per browser (Chromium observe-only, Safari
+   macOS-only, absent on iOS) — the capability matrix already records this.
+2. **Async message responses require Chromium 148+** (mid-2026), which is when
+   Chrome shipped the `browser.*` namespace + promise-returning
+   `runtime.onMessage`. Firefox and Safari have supported promise responses
+   for years. Older Chromium is out of scope for M1.
+3. **Tab URL is not read from `tabs.query`** — doing so would require the
+   `tabs` permission or matching host permissions. WebGuard obtains the URL
+   from its own content script instead, so it stays at a single `activeTab`
+   permission. (Verified: the tab *id* itself requires no permission.)
+4. **Safari distribution** still requires the native macOS/visionOS/iOS app
+   wrapper; the `dist/safari/` bundle is the web-extension payload for that
+   wrapper. iOS (no network observation) is not a target for this slice.
+5. **`storage` permission was dropped** in M1 (unused). It returns with a real
+   persistence feature.

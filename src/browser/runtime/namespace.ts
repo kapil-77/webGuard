@@ -23,12 +23,25 @@ export interface BrowserRuntimeInfo {
   version?: string;
 }
 
+/** Narrow view of a browser tab — only the members WebGuard actually calls. */
+export interface BrowserTab {
+  readonly id?: number;
+  readonly url?: string;
+  readonly title?: string;
+}
+
+export interface BrowserTabsApi {
+  query(queryInfo: Record<string, unknown>): Promise<readonly BrowserTab[]>;
+  sendMessage(tabId: number, message: unknown): Promise<unknown | undefined>;
+}
+
 export interface BrowserRuntimeApi {
   runtime: {
     getBrowserInfo?(): Promise<BrowserRuntimeInfo>;
     sendMessage?(message: unknown): Promise<unknown | undefined>;
     onMessage?(listener: (message: unknown, sender: unknown) => unknown | Promise<unknown> | undefined): void;
   };
+  tabs?: BrowserTabsApi;
   storage?: {
     local?: BrowserStorageArea;
     session?: BrowserStorageArea;

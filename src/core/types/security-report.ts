@@ -1,5 +1,5 @@
 import type { Finding } from './finding';
-import type { PageSnapshot } from './page-snapshot';
+import type { PageSecurityData } from './page-security-data';
 import type { RiskScore } from './risk-score';
 
 /**
@@ -7,7 +7,7 @@ import type { RiskScore } from './risk-score';
  * Safe to persist to extension storage and to pass across extension contexts.
  */
 export interface SecurityReport {
-  readonly snapshot: PageSnapshot;
+  readonly page: PageSecurityData;
   readonly findings: readonly Finding[];
   readonly score: RiskScore;
   readonly generatedAt: string;

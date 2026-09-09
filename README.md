@@ -8,10 +8,12 @@ demonstration of **how browser-specific WebExtension API differences can be
 isolated behind adapters while the core security engine stays
 browser-agnostic.**
 
-> **Status: foundation (milestone 0).** The project is initialized: architecture,
-> build system, manifest strategy, adapters, engine/scoring contracts and tests
-> are in place. Detectors, page collection and the real UI are intentionally not
-> implemented yet. See [ARCHITECTURE.md](./ARCHITECTURE.md) and *Roadmap* below.
+> **Status: first working vertical slice (M1).** WebGuard now inspects the
+> current webpage end-to-end: the popup asks the background, the background
+> collects observed page data through the browser adapter + content script,
+> four security detectors run, a deterministic 0–100 score with status is
+> computed, and the popup renders score + expandable findings. See
+> [ARCHITECTURE.md](./ARCHITECTURE.md) and *Roadmap* below.
 
 ---
 
@@ -50,23 +52,24 @@ webGuard/
 │  └─ style.css                absolute-rooted asset paths, so no Vite HTML entry)
 ├─ src/
 │  ├─ core/                    browser-agnostic security engine (pure TS)
-│  │  ├─ types/                Severity, Category, Finding, PageSnapshot, …
-│  │  ├─ detectors/            Detector contract + registry (0 detectors yet)
-│  │  ├─ security-engine/      engine skeleton: snapshot → findings → report
-│  │  └─ risk-scoring/         scoreFindings: findings → 0..100 score
+│  │  ├─ types/                Severity, Category, Finding, PageSecurityData, …
+│  │  ├─ detectors/            https · mixed-content · insecure-form · third-party
+│  │  ├─ security-engine/      engine: page → findings → report
+│  │  └─ risk-scoring/         scoreFindings: → 0..100 score + status
 │  ├─ browser/                 ONLY layer allowed to touch WebExtension APIs
 │  │  ├─ runtime/              namespace resolution + validated messaging
 │  │  ├─ adapter/              BrowserAdapter contract, factory, base
+│  │  ├─ collection/           normalization + collection errors
 │  │  ├─ chromium/             ChromiumAdapter    (service worker, observe-only)
 │  │  ├─ firefox/              FirefoxAdapter     (background page, can block)
 │  │  └─ webkit/               WebKitAdapter      (non-persistent, macOS-only)
 │  ├─ extension/
-│  │  ├─ background/           single stateless background entry
-│  │  ├─ content/              passive content script (no-op by design)
-│  │  ├─ popup/                React popup entry (compile-only)
+│  │  ├─ background/           analyze flow (single stateless entry)
+│  │  ├─ content/              DOM observer (content.js)
+│  │  ├─ popup/                React popup (score card, findings, states)
 │  │  └─ report/               reserved for the report view
 │  ├─ components/  hooks/      reserved for the UI milestone
-│  └─ lib/                     validation + display sanitization
+│  └─ lib/                     validation + sanitization + message protocol
 ├─ vite.config.ts              multi-entry build (background/content/popup)
 ├─ vitest.config.ts
 └─ ARCHITECTURE.md             the full design document
@@ -80,7 +83,7 @@ webGuard/
 | `npm run dev` | `vite build --watch` (iterate on the bundle) |
 | `npm run build` | Build bundle + assemble `dist/chromium`, `dist/firefox`, `dist/safari` |
 | `npm run typecheck` | `tsc` checks for `src/` and tool configs |
-| `npm test` | Run the Vitest suite (37 tests) |
+| `npm test` | Run the Vitest suite (84 tests) |
 
 > **Windows / PowerShell note:** if `npm` fails with a PowerShell execution-policy
 > error, use `npm.cmd` instead (a `node_modules\.bin\*.cmd` shim exists).
@@ -95,29 +98,50 @@ webGuard/
 - **Safari:** *Develop → Allow Unsigned Extensions* → load the unpacked folder.
   Distribution ultimately requires the native-app wrapper (macOS only).
 
-## Security & privacy principles (wired into this foundation)
+## Security & privacy principles (wired into the slice)
 
-- **Minimal permissions** — only `activeTab` + `storage` are declared. No
-  `tabs`, no `<all_urls>` host permissions, no network permissions.
+- **Minimal permissions** — only `activeTab` is declared. No `tabs`, no
+  `<all_urls>` host permissions, no network permissions, no `storage` (it
+  returns only with a real persistence feature).
+- **Popup never touches privileged APIs** — it only sends `webguard/analyze`
+  and receives a validated `AnalyzeResponse`; all tabs access lives in the
+  background behind the `BrowserAdapter`.
 - **No remote code** — the extension bundles only local code; every extension
   page runs under `script-src 'self'; object-src 'self'`.
-- **Validate extension messages** — every inbound message must pass structural
-  validation (`src/lib/validation.ts`) before dispatch; malformed messages are
-  dropped.
+- **Validate extension messages** — envelopes are schema-checked before
+  dispatch (`src/lib/validation.ts`) and payloads are validated by the typed
+  protocol (`src/lib/protocol.ts`).
 - **Sanitize displayed data** — nothing scraped is rendered verbatim
-  (`src/lib/sanitize.ts`).
-- **Privacy-first & local by default** — browsing data stays on the device,
-  stored in `storage.local` only; there are no network calls and no telemetry.
+  (`src/lib/sanitize.ts`); evidence shows `scheme://host` only.
+- **Privacy-first & local by default** — no network calls, no telemetry, a
+  passive content script that only responds when asked; analysis happens only
+  when you open the popup.
 - **No hardcoded secrets** — there are none, by design.
+
+## Verifying the slice in a real browser
+
+1. `npm.cmd run build`
+2. **Chrome/Edge/Brave:** `chrome://extensions` → Developer mode → Load
+   unpacked → `dist/chromium`. Pin the WebGuard action, then open any website
+   and click it. Expected: host, score, status pill and 4 expandable findings.
+3. **Firefox:** `about:debugging` → Load Temporary Add-on →
+   `dist/firefox/manifest.json`.
+4. Good test pages: an https site (`https://example.com`), an http site
+   (`http://example.com`), a browser-internal page (`chrome://settings`) → the
+   popup must show the "cannot analyze" state.
+5. The extension does a fresh local analysis per popup open, so no data is
+   persisted.
 
 ## Roadmap
 
 - **M0 (done):** scaffolding, architecture, manifests, adapters, engine/scorer
   contracts, tests, docs.
-- **M1:** collect page/security information → normalize (PageSnapshot collection
-  via adapters) → run a first real detector set (TLS, security headers,
-  cookies) → score → render a minimal report.
-- **M2:** Security Pulse / Threat Surface UI (dark, technical, minimal).
+- **M1 (done):** first working vertical slice — current page → adapter →
+  normalized page data → 4 detectors → deterministic score/status → popup with
+  loading/unsupported/error/clean states.
+- **M2:** Security Pulse / Threat Surface UI (dark, technical, minimal);
+  persistence of last report to `storage.local` (restores the `storage`
+  permission with justification).
 - **M3:** observation-only network telemetry via each browser's supported
-  mechanism.
+  mechanism; headers/cookies detectors.
 - **M4:** packaging pipeline (`web-ext` for Firefox, Safari wrapper for macOS).
