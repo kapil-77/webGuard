@@ -11,10 +11,7 @@ import { ErrorView, FindingList, LoadingView, ScoreCard, UnsupportedView } from 
  * status and an expandable findings list. All analysis happens in core/ — this
  * component only fetches (via client.ts) and renders. The "Security Pulse /
  * Threat Surface" experience is intentionally NOT built yet.
- *
- * Static popup.html + style.css ship alongside the compiled popup.js (see
- * scripts/build-manifests.mjs); Vite HTML entries cannot be used for
- * extension pages (absolute-rooted asset paths).
+
  */
 
 type PopupState =
