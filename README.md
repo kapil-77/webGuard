@@ -46,7 +46,8 @@ webGuard/
 │  ├─ firefox.json             background: scripts + gecko.id
 │  └─ safari.json              background: scripts + persistent:false
 ├─ scripts/
-│  └─ build-manifests.mjs      merges overlays → dist/<target>/manifest.json
+│  ├─ build-extension.mjs        per-entry Vite builds (background/content/popup)
+│  └─ build-manifests.mjs        merges overlays → dist/<target>/manifest.json
 ├─ static/
 │  ├─ popup.html               static popup shell (extension pages can't use
 │  └─ style.css                absolute-rooted asset paths, so no Vite HTML entry)
@@ -70,7 +71,6 @@ webGuard/
 │  │  └─ report/               reserved for the report view
 │  ├─ components/  hooks/      reserved for the UI milestone
 │  └─ lib/                     validation + sanitization + message protocol
-├─ vite.config.ts              multi-entry build (background/content/popup)
 ├─ vitest.config.ts
 └─ ARCHITECTURE.md             the full design document
 ```
@@ -80,8 +80,8 @@ webGuard/
 | Command | What it does |
 |---|---|
 | `npm install` | Install dependencies |
-| `npm run dev` | `vite build --watch` (iterate on the bundle) |
-| `npm run build` | Build bundle + assemble `dist/chromium`, `dist/firefox`, `dist/safari` |
+| `npm run dev` | `node scripts/build-extension.mjs --watch` (rebuild loop) |
+| `npm run build` | Per-entry bundle (`build-extension.mjs`) + assemble `dist/chromium`, `dist/firefox`, `dist/safari` (`build-manifests.mjs`) |
 | `npm run typecheck` | `tsc` checks for `src/` and tool configs |
 | `npm test` | Run the Vitest suite (84 tests) |
 

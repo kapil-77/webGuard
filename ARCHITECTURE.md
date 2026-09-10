@@ -291,6 +291,32 @@ copied verbatim. Vite's HTML entries emit absolute-rooted asset URLs
 static and points at the relative, hash-free `./popup.js` produced from the
 `popup.tsx` entry.
 
+### Build strategy (why per-entry builds)
+
+`scripts/build-extension.mjs` runs **three single-input Vite builds** (one per
+entry: background, content, popup) and merges the outputs into `dist/`. This is
+a deliberate, cross-browser-required choice:
+
+- **Extension background/service-worker and content scripts must be CLASSIC,
+  self-contained scripts — they cannot be ES modules.**
+  - Chrome loads `background.service_worker` as a classic script unless the
+    manifest sets `background.type: "module"` — but Firefox and Safari do not
+    support module background scripts, so we cannot set it.
+  - Chrome content scripts have **no** module option at all.
+- A single multi-entry Vite build splits shared code into `assets/*.js` chunks
+  that these scripts would `import` — which fails with
+  `SyntaxError: Cannot use import statement outside a module` and
+  `Service worker registration failed (status 15)`.
+- A **single-input** build always inlines everything into the entry file (no
+  shared chunks, no `import`/`export`), which is exactly what `background.js`
+  and `content.js` need.
+- Only the **popup** is a real ES module (`popup.html` loads it via
+  `<script type="module">`), so an ESM `popup.js` is fine.
+
+`npm run dev` runs the same script with `--watch` (event-driven via Node's
+built-in `fs.watch` on `src/` + `static/`; Vite 8's `createBuilder`/watch API
+is still experimental).
+
 ---
 
 ## 8. Capability matrix

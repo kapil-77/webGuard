@@ -8,8 +8,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build && node scripts/build-manifests.mjs",
+    "dev": "node scripts/build-extension.mjs --watch",
+    "build": "node scripts/build-extension.mjs && node scripts/build-manifests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

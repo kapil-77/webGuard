@@ -1,10 +1,10 @@
 /**
- * Assembles per-browser extension folders after `vite build`.
+ * Assembles per-browser extension folders after `scripts/build-extension.mjs`.
  *
- * Vite emits the raw bundle into dist/ (background.js, content.js, popup.js,
- * assets/). This script then, for each target, copies the bundle — plus the
- * static extension files (popup.html, style.css) — into dist/<target>/ and
- * writes the browser-specific merged manifest.json.
+ * The extension bundle is emitted into dist/ (background.js, content.js,
+ * popup.js, assets/). This script then, for each target, copies the bundle —
+ * plus the static extension files (popup.html, style.css) — into dist/<target>/
+ * and writes the browser-specific merged manifest.json.
  *
  *   dist/chromium/  dist/firefox/  dist/safari/
  *
@@ -37,7 +37,7 @@ function readJson(path) {
 
 function main() {
   if (!existsSync(DIST)) {
-    console.error(`Expected "${DIST}/" to exist after "vite build". Did you run the build step?`);
+    console.error(`Expected "${DIST}/" to exist after "scripts/build-extension.mjs". Did you run the build step?`);
     process.exit(1);
   }
 
