@@ -9,12 +9,6 @@ import type { BrowserAdapter, BrowserId, WebGuardCapabilities } from './interfac
 
 /**
  * Shared adapter scaffolding.
- *
- * The tab-transport primitives (query active tab, ask a tab's content script
- * for observed page data) are genuinely identical across Chromium, Firefox
- * and Safari — the API shape is the same — so they live here once. Concrete
- * adapters only declare capabilities/identity; browser-specific behavior is
- * added over time as thin overrides rather than branching logic in the core.
  */
 export abstract class BaseBrowserAdapter implements BrowserAdapter {
   readonly #id: BrowserId;
