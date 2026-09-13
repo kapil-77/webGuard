@@ -46,8 +46,9 @@ webGuard/
 │  ├─ firefox.json             background: scripts + gecko.id
 │  └─ safari.json              background: scripts + persistent:false
 ├─ scripts/
-│  ├─ build-extension.mjs        per-entry Vite builds (background/content/popup)
-│  └─ build-manifests.mjs        merges overlays → dist/<target>/manifest.json
+│  ├─ build-extension.mjs        per-entry Vite builds (+ manifest assembly)
+│  ├─ build-manifests.mjs        merges overlays → dist/<target>/manifest.json
+│  └─ smoke.mjs                  headless e2e smoke on the built bundle
 ├─ static/
 │  ├─ popup.html               static popup shell (extension pages can't use
 │  └─ style.css                absolute-rooted asset paths, so no Vite HTML entry)
@@ -81,8 +82,9 @@ webGuard/
 |---|---|
 | `npm install` | Install dependencies |
 | `npm run dev` | `node scripts/build-extension.mjs --watch` (rebuild loop) |
-| `npm run build` | Per-entry bundle (`build-extension.mjs`) + assemble `dist/chromium`, `dist/firefox`, `dist/safari` (`build-manifests.mjs`) |
+| `npm run build` | Per-entry bundle + assemble `dist/chromium`, `dist/firefox`, `dist/safari` (single command) |
 | `npm run typecheck` | `tsc` checks for `src/` and tool configs |
+| `npm run smoke` | Headless e2e smoke test on the built `dist/chromium` (13 checks) |
 | `npm test` | Run the Vitest suite (84 tests) |
 
 > **Windows / PowerShell note:** if `npm` fails with a PowerShell execution-policy

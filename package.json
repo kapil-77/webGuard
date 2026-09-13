@@ -2,14 +2,15 @@
   "name": "webguard",
   "version": "0.2.0",
   "private": true,
-  "description": "WebGuard — privacy-first, cross-browser web security intelligence browser extension.",
+  "description": "WebGuard â€” privacy-first, cross-browser web security intelligence browser extension.",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "node scripts/build-extension.mjs --watch",
-    "build": "node scripts/build-extension.mjs && node scripts/build-manifests.mjs",
+    "build": "node scripts/build-extension.mjs",
+    "smoke": "node scripts/smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

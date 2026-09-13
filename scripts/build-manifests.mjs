@@ -10,13 +10,18 @@
  *
  * Manifests are composed from manifests/base.json plus a per-browser overlay.
  * Overlay values override base values (deep merge).
+ *
+ * Exported as `assembleManifests()` so scripts/build-extension.mjs can call it
+ * after every (watch-)build; it also runs standalone from the CLI.
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const ROOT = resolve(import.meta.dirname, '..');
 const TARGETS = ['chromium', 'firefox', 'safari'];
-const DIST = 'dist';
-const STATIC_DIR = 'static';
+const DIST = join(ROOT, 'dist');
+const STATIC_DIR = join(ROOT, 'static');
 const STATIC_FILES = ['popup.html', 'style.css'];
 
 function deepMerge(base, overlay) {
@@ -35,18 +40,21 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
-function main() {
+/**
+ * Assembles dist/chromium, dist/firefox and dist/safari from the bundle in
+ * dist/ plus static/ files and the per-browser manifest overlays.
+ */
+export function assembleManifests() {
   if (!existsSync(DIST)) {
-    console.error(`Expected "${DIST}/" to exist after "scripts/build-extension.mjs". Did you run the build step?`);
-    process.exit(1);
+    throw new Error(`Expected "${DIST}/" to exist. Did you run scripts/build-extension.mjs first?`);
   }
 
-  const base = readJson(join('manifests', 'base.json'));
+  const base = readJson(join(ROOT, 'manifests', 'base.json'));
   const bundleEntries = readdirSync(DIST);
 
   for (const target of TARGETS) {
     const outDir = join(DIST, target);
-    const overlay = readJson(join('manifests', `${target}.json`));
+    const overlay = readJson(join(ROOT, 'manifests', `${target}.json`));
     const manifest = deepMerge(base, overlay);
 
     rmSync(outDir, { recursive: true, force: true });
@@ -62,8 +70,7 @@ function main() {
     for (const file of STATIC_FILES) {
       const source = join(STATIC_DIR, file);
       if (!existsSync(source)) {
-        console.error(`Missing static file: ${source}`);
-        process.exit(1);
+        throw new Error(`Missing static file: ${source}`);
       }
       cpSync(source, join(outDir, file));
     }
@@ -73,4 +80,12 @@ function main() {
   }
 }
 
-main();
+// Run directly when executed as a CLI script (node scripts/build-manifests.mjs).
+if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
+  try {
+    assembleManifests();
+  } catch (error) {
+    console.error(String(error?.message || error));
+    process.exit(1);
+  }
+}

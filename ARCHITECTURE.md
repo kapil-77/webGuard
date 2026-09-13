@@ -423,3 +423,34 @@ findings ("✓ HTTPS", "✓ No mixed content", …).
    wrapper. iOS (no network observation) is not a target for this slice.
 5. **`storage` permission was dropped** in M1 (unused). It returns with a real
    persistence feature.
+
+---
+
+## 11. Troubleshooting: MV3 service-worker registration
+
+Symptom: the extension card shows "Service worker registration failed. Status
+code: 15" and chrome://serviceworker-internals lists no registration.
+
+Chrome's status 15 (kErrorInvalidState) is NOT a script error. It most often
+means the profile keeps a *wedged service-worker registration* left behind by
+an earlier failed attempt (for example, a background.js that was an ES module
+without background.type "module"). Even after replacing background.js with a
+valid classic script and clicking reload, Chrome can keep returning status 15
+until the registration state is cleared.
+
+Clean-reload procedure:
+1. chrome://extensions → Remove the WebGuard entry.
+2. Fully quit Chrome (tray → Exit, or taskkill /f /im chrome.exe) so the
+   profile's service-worker registry is released; closing the window is not
+   enough on Windows.
+3. Relaunch Chrome → chrome://extensions → Load unpacked →
+   dist/chromium.
+4. If it still fails, cross-check the same dist/chromium folder in Edge
+   (edge://extensions). If Edge accepts it, the extension bundle is fine and
+   only the Chrome profile state needs to be reset (e.g. remove the extension
+   entry from the profile Preferences / Service Worker data, or use a fresh
+   --user-data-dir profile).
+
+Why background.js must be a classic script is documented in §7 (Build
+strategy): Chrome loads background.service_worker as a classic script unless
+background.type is "module", and content scripts can never be modules.

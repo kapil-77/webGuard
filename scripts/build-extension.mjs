@@ -24,15 +24,18 @@
  *        dist/.stage/content/     (from src/extension/content/index.ts)
  *        dist/.stage/popup/       (from src/extension/popup/popup.tsx)
  *   2. Merge the stage dirs into dist/ and remove dist/.stage.
- * Steps 3 (per-browser folders + manifests) are done by build-manifests.mjs.
+ *   3. Call assembleManifests() to produce dist/chromium, dist/firefox,
+ *      dist/safari (bundle + static files + per-browser manifest.json) —
+ *      both in one-shot (`npm run build`) and in watch (`npm run dev`),
+ *      so the per-browser folders are always present and loadable.
  *
  *   node scripts/build-extension.mjs [--watch]
  */
-
 import { cpSync, existsSync, mkdirSync, rmSync, readdirSync, watch } from 'node:fs';
 import { join, resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { build } from 'vite';
+import { assembleManifests } from './build-manifests.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const STAGE = join(ROOT, 'dist', '.stage');
@@ -81,8 +84,6 @@ function mergeStage(name) {
   for (const file of files) {
     const from = join(stageDir, file);
     const to = join(DIST, file);
-    // A file with the same name may already exist in dist (e.g. react shared
-    // by popup only); last-writer wins is fine since entries are disjoint.
     cpSync(from, to, { recursive: true });
   }
 }
@@ -102,11 +103,12 @@ async function buildOnce() {
   }
   rmSync(STAGE, { recursive: true, force: true });
   console.log('✔ extension bundle written to dist/');
+  assembleManifests();
 }
 
 async function runWatch() {
   // Event-driven watch using Node's built-in fs.watch (no extra dependency).
-  // Rebuilds only when a file under src/ or static/ changes.
+  // Rebuilds (bundle + manifests) only when a file under src/ or static/ changes.
   console.log('WebGuard build watch started. Press Ctrl+C to stop.');
   await buildOnce();
 
