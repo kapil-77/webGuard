@@ -35,11 +35,26 @@ export interface BrowserTabsApi {
   sendMessage(tabId: number, message: unknown): Promise<unknown | undefined>;
 }
 
+/**
+ * Listener signature for `runtime.onMessage.addListener`.
+ *
+ * NOTE: returning a Promise from the listener is the modern async-response
+ * contract (Firefox/Safari for years; Chrome 148+), consistent with the
+ * Chrome 148+ baseline documented in ARCHITECTURE.md.
+ */
+export type RuntimeMessageListener = (
+  message: unknown,
+  sender: unknown,
+) => unknown | Promise<unknown> | undefined;
+
 export interface BrowserRuntimeApi {
   runtime: {
     getBrowserInfo?(): Promise<BrowserRuntimeInfo>;
     sendMessage?(message: unknown): Promise<unknown | undefined>;
-    onMessage?(listener: (message: unknown, sender: unknown) => unknown | Promise<unknown> | undefined): void;
+    /** `runtime.onMessage` is an Event object — use `onMessage.addListener(...)`. */
+    onMessage?: {
+      addListener(listener: RuntimeMessageListener): void;
+    };
   };
   tabs?: BrowserTabsApi;
   storage?: {

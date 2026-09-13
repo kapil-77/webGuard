@@ -1,5 +1,5 @@
 import { isValidEnvelope, type MessageEnvelope } from '../../lib/validation';
-import { resolveNamespace, type BrowserTabsApi } from './namespace';
+import { resolveNamespace, type BrowserTabsApi, type RuntimeMessageListener } from './namespace';
 
 /**
  * Validated messaging primitives shared by background, content and popup.
@@ -47,20 +47,25 @@ export async function sendMessage(message: MessageEnvelope): Promise<unknown> {
 export type MessageHandler = (message: MessageEnvelope, sender: unknown) => unknown | Promise<unknown> | undefined;
 
 /**
- * Registers an inbound message listener. Immutable rule: the listener only
- * ever sees envelopes that passed structural validation.
+ * Registers an inbound message listener.
+ *
+ * `runtime.onMessage` is an Event object: listeners are added with
+ * `onMessage.addListener(...)`, NOT by invoking `onMessage` directly.
+ * Immutable rule: the listener only ever sees envelopes that passed
+ * structural validation.
  */
 export function onMessage(handler: MessageHandler): void {
-  const register = api().runtime.onMessage;
-  if (!register) {
+  const onMessageEvent = api().runtime.onMessage;
+  if (!onMessageEvent?.addListener) {
     throw new Error('WebGuard: runtime.onMessage is unavailable in this context');
   }
-  register((message: unknown, sender: unknown) => {
+  const listener: RuntimeMessageListener = (message, sender) => {
     if (!isValidEnvelope(message)) {
       return undefined;
     }
     return handler(message, sender);
-  });
+  };
+  onMessageEvent.addListener(listener);
 }
 
 /**

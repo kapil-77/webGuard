@@ -70,7 +70,7 @@ async function main() {
 
   // ---------- phase 1: load content.js (its own isolated environment) ----------
   const contentChrome = {
-    runtime: { onMessage: (listener) => { contentListener = listener; } },
+    runtime: { onMessage: { addListener: (listener) => { contentListener = listener; } } },
   };
   resetNamespace();
   globalThis.chrome = contentChrome;
@@ -81,7 +81,7 @@ async function main() {
 
   // ---------- phase 2: load background.js (its own isolated environment) ----------
   const backgroundChrome = {
-    runtime: { onMessage: (listener) => { globalThis.__backgroundListener = listener; } },
+    runtime: { onMessage: { addListener: (listener) => { globalThis.__backgroundListener = listener; } } },
     tabs: {
       query: async () => [{ id: 7 }],
       sendMessage: async (_tabId, message) => contentListener(message),
