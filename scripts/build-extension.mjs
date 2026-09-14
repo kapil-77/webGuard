@@ -1,36 +1,4 @@
-/**
- * WebGuard production build (Vite programmatic API).
- *
- * WHY per-entry builds instead of one multi-entry `vite build`:
- *   - Extension background/service-worker and content scripts must be
- *     CLASSIC, self-contained scripts. They cannot be ES modules.
- *       * Chrome: `background.service_worker` is loaded as a classic script
- *         unless manifest `background.type` is "module" — but Firefox/Safari
- *         do not support module background scripts, so we can't set it.
- *       * Chrome content scripts: there is NO module content-script option.
- *     A single multi-entry Vite build splits shared code into `assets/*.js`
- *     chunks that these scripts would `import` — which fails with
- *     "SyntaxError: Cannot use import statement outside a module" and
- *     "Service worker registration failed (status 15)".
- *   - A single-input build always INLINES everything into the entry file
- *     (no shared chunks, no import/export), which is exactly what
- *     background.js and content.js need.
- *   - Only the popup is a real ES module (`popup.html` loads it via
- *     `<script type="module">`), so an ESM popup.js is fine.
- *
- * Strategy:
- *   1. Run three single-input Vite builds, each writing to its own stage dir:
- *        dist/.stage/background/  (from src/extension/background/index.ts)
- *        dist/.stage/content/     (from src/extension/content/index.ts)
- *        dist/.stage/popup/       (from src/extension/popup/popup.tsx)
- *   2. Merge the stage dirs into dist/ and remove dist/.stage.
- *   3. Call assembleManifests() to produce dist/chromium, dist/firefox,
- *      dist/safari (bundle + static files + per-browser manifest.json) —
- *      both in one-shot (`npm run build`) and in watch (`npm run dev`),
- *      so the per-browser folders are always present and loadable.
- *
- *   node scripts/build-extension.mjs [--watch]
- */
+
 import { cpSync, existsSync, mkdirSync, rmSync, readdirSync, watch } from 'node:fs';
 import { join, resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
