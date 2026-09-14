@@ -1,17 +1,4 @@
-/**
- * WebGuard built-bundle smoke test (headless).
- *
- * Loads the PRODUCTION dist/chromium artifacts in a sandboxed Node process
- * with a stubbed `chrome.*` runtime + fake DOM, then drives a real
- * popup -> background -> content -> engine round-trip.
- *
- * The background and content bundles are loaded from SEPARATE directory
- * copies: in a real browser each extension context gets its own JS
- * environment (so their module state never collides), and loading two copies
- * recreates that isolation in-process.
- *
- * Usage: `npm run smoke` (requires `npm run build` to have populated dist/).
- */
+
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
