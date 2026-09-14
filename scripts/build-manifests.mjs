@@ -1,19 +1,4 @@
-/**
- * Assembles per-browser extension folders after `scripts/build-extension.mjs`.
- *
- * The extension bundle is emitted into dist/ (background.js, content.js,
- * popup.js, assets/). This script then, for each target, copies the bundle —
- * plus the static extension files (popup.html, style.css) — into dist/<target>/
- * and writes the browser-specific merged manifest.json.
- *
- *   dist/chromium/  dist/firefox/  dist/safari/
- *
- * Manifests are composed from manifests/base.json plus a per-browser overlay.
- * Overlay values override base values (deep merge).
- *
- * Exported as `assembleManifests()` so scripts/build-extension.mjs can call it
- * after every (watch-)build; it also runs standalone from the CLI.
- */
+
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
