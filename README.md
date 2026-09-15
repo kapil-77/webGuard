@@ -15,6 +15,17 @@ browser-agnostic.**
 > computed, and the popup renders score + expandable findings. See
 > [ARCHITECTURE.md](./ARCHITECTURE.md) and *Roadmap* below.
 
+## Test results
+
+<img width="1802" height="902" alt="image" src="https://github.com/user-attachments/assets/cb3695ef-4483-4a1e-9086-d19ef42efc07" />
+
+<img width="1811" height="888" alt="image" src="https://github.com/user-attachments/assets/816159e0-752f-44bc-95b1-ea8138d4771c" />
+
+<img width="1801" height="993" alt="image" src="https://github.com/user-attachments/assets/bd4245f6-09e2-4ab4-9652-5dbc457e4b7d" />
+
+<img width="1806" height="1007" alt="image" src="https://github.com/user-attachments/assets/36057c36-34c2-494f-91e8-989e0b32d66f" />
+
+
 ---
 
 ## Supported browsers (target)
