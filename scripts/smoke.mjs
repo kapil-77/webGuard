@@ -1,13 +1,4 @@
-/**
- * WebGuard smoke test — validates the BUILD ARTIFACTS end to end in Node
- * with faithful per-browser runtime stubs, WITHOUT launching a browser.
- *
- * Message delivery here emulates CHROME: a listener that returns a plain
- * (non-true, non-Promise) value has NOT produced a response. A response only
- * arrives via sendResponse(value) — synchronously, or asynchronously after
- * returning true — or via a returned Promise (Chrome 148+ / Firefox / Safari).
- * This matches the semantics our messaging.onMessage() wrapper normalizes.
- */
+
 
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
