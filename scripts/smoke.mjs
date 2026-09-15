@@ -1,3 +1,13 @@
+/**
+ * WebGuard smoke test — validates the BUILD ARTIFACTS end to end in Node
+ * with faithful per-browser runtime stubs, WITHOUT launching a browser.
+ *
+ * Message delivery here emulates CHROME: a listener that returns a plain
+ * (non-true, non-Promise) value has NOT produced a response. A response only
+ * arrives via sendResponse(value) — synchronously, or asynchronously after
+ * returning true — or via a returned Promise (Chrome 148+ / Firefox / Safari).
+ * This matches the semantics our messaging.onMessage() wrapper normalizes.
+ */
 
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -24,6 +34,40 @@ const url = (base, f) => pathToFileURL(join(base, f)).toString();
 
 let contentListener = null;
 
+/**
+ * Chrome-faithful delivery of a single runtime.onMessage event:
+ *   - a synchronous sendResponse(value) call delivers the response;
+ *   - returning true keeps the channel open for a later async sendResponse;
+ *   - a returned Promise resolves the response (Chrome 148+ / Firefox / Safari);
+ *   - anything else (plain non-true return, or no sendResponse at all)
+ *     delivers NO response => undefined.
+ */
+async function callRuntimeListener(listener, message) {
+  let response;
+  let responded = false;
+  const sendResponse = (value) => {
+    response = value;
+    responded = true;
+  };
+  let result;
+  try {
+    result = listener(message, undefined, sendResponse);
+  } catch {
+    // A listener that throws answers with "no response" in Chrome.
+    return undefined;
+  }
+  if (result === true) {
+    // Async path: response arrives later via a sendResponse call. Give the
+    // microtask queue a turn so Promise.resolve(...).then(sendResponse) lands.
+    await new Promise((resolveTick) => setTimeout(resolveTick, 0));
+    return responded ? response : undefined;
+  }
+  if (result && typeof result.then === 'function') {
+    return await result;
+  }
+  // Synchronous plain return WITHOUT sendResponse is ignored by Chrome.
+  return responded ? response : undefined;
+}
 function makeFakeDom() {
   const bySel = {
     'script[src]': [{ v: '/app.js' }],
@@ -71,7 +115,7 @@ async function main() {
     runtime: { onMessage: { addListener: (listener) => { globalThis.__backgroundListener = listener; } } },
     tabs: {
       query: async () => [{ id: 7 }],
-      sendMessage: async (_tabId, message) => contentListener(message),
+      sendMessage: async (_tabId, message) => callRuntimeListener(contentListener, message),
     },
   };
   resetNamespace();
@@ -85,7 +129,13 @@ async function main() {
   check('background.js registers an analyze listener', typeof globalThis.__backgroundListener === 'function');
 
   // ---------- phase 3: popup -> background analyze round-trip ----------
-  const response = await globalThis.__backgroundListener({ type: 'webguard/analyze', id: 'smoke-1' });
+  // The content listener returns a PLAIN object (observePage data). In real
+  // Chrome that return would be ignored; the response only exists because the
+  // wrapper delivered it via sendResponse. callRuntimeListener enforces that.
+  const response = await callRuntimeListener(globalThis.__backgroundListener, {
+    type: 'webguard/analyze',
+    id: 'smoke-1',
+  });
   check('analyze resolves ok:true', response?.ok === true, JSON.stringify(response?.ok));
   if (!response?.ok) {
     console.log('  detail:', response?.detail);
@@ -109,12 +159,11 @@ async function main() {
   );
   check('insecure-form detected the http form action', report.findings.some((f) => f.id === 'insecure-form:present' && f.severity === 'high'));
   check('no findings carry raw query strings or full urls in evidence', !JSON.stringify(report.findings).includes('?') && !JSON.stringify(report.findings).includes('http://example.com/legacy-search'));
-
   // ---------- phase 4: unsupported page handling ----------
   const oldListener = globalThis.__backgroundListener;
   backgroundChrome.tabs.query = async () => [{ id: 8 }];
   backgroundChrome.tabs.sendMessage = async () => ({ url: 'file:///C:/x.html', title: 'file', resources: [] });
-  const unsupported = await oldListener({ type: 'webguard/analyze', id: 'smoke-2' });
+  const unsupported = await callRuntimeListener(oldListener, { type: 'webguard/analyze', id: 'smoke-2' });
   const unsupportedOk = unsupported?.ok === false && unsupported.reason === 'unsupported-page';
   check('unsupported pages -> unsupported-page response', unsupportedOk, JSON.stringify(unsupportedOk ? '' : unsupported));
 

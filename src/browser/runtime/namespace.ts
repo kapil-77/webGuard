@@ -38,14 +38,19 @@ export interface BrowserTabsApi {
 /**
  * Listener signature for `runtime.onMessage.addListener`.
  *
- * NOTE: returning a Promise from the listener is the modern async-response
- * contract (Firefox/Safari for years; Chrome 148+), consistent with the
- * Chrome 148+ baseline documented in ARCHITECTURE.md.
+ * Responding contract in Chrome: a plain (non-Promise) listener return value
+ * is NOT delivered as the response. A listener must respond via ONE of:
+ *   - call `sendResponse(value)` synchronously, and return `undefined`, or
+ *   - return `true` and call `sendResponse(value)` asynchronously later, or
+ *   - return a Promise (Chrome 148+, Firefox, Safari).
+ * Our messaging.onMessage() wrapper normalizes all three paths (see
+ * src/browser/runtime/messaging.ts).
  */
 export type RuntimeMessageListener = (
   message: unknown,
   sender: unknown,
-) => unknown | Promise<unknown> | undefined;
+  sendResponse: (response?: unknown) => void,
+) => true | void;
 
 export interface BrowserRuntimeApi {
   runtime: {

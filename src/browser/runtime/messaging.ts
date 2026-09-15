@@ -46,11 +46,25 @@ export async function sendMessage(message: MessageEnvelope): Promise<unknown> {
 
 export type MessageHandler = (message: MessageEnvelope, sender: unknown) => unknown | Promise<unknown> | undefined;
 
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return typeof value === 'object' && value !== null && typeof (value as { then?: unknown }).then === 'function';
+}
+
 /**
  * Registers an inbound message listener.
  *
  * `runtime.onMessage` is an Event object: listeners are added with
  * `onMessage.addListener(...)`, NOT by invoking `onMessage` directly.
+ * Listeners respond through the third argument — `sendResponse`.
+ *
+ * Chrome does NOT use a plain (non-Promise) listener return value as the
+ * response; the only valid mechanisms are `sendResponse(value)` (all
+ * versions) or a returned Promise (Chrome 148+, Firefox, Safari). This
+ * wrapper normalizes both: a handler that returns a value is delivered via
+ * `sendResponse` synchronously; a handler that returns a Promise is delivered
+ * via `sendResponse` once it resolves (returning `true` keeps the channel
+ * open for the async `sendResponse`).
+ *
  * Immutable rule: the listener only ever sees envelopes that passed
  * structural validation.
  */
@@ -59,11 +73,24 @@ export function onMessage(handler: MessageHandler): void {
   if (!onMessageEvent?.addListener) {
     throw new Error('WebGuard: runtime.onMessage is unavailable in this context');
   }
-  const listener: RuntimeMessageListener = (message, sender) => {
+  const listener: RuntimeMessageListener = (message, sender, sendResponse) => {
     if (!isValidEnvelope(message)) {
       return undefined;
     }
-    return handler(message, sender);
+    const result = handler(message, sender);
+    if (result === undefined) {
+      // Handler declined to respond — leave the channel untouched.
+      return undefined;
+    }
+    if (isPromiseLike(result)) {
+      void Promise.resolve(result).then(
+        (value) => sendResponse(value),
+        () => sendResponse(undefined),
+      );
+      return true; // keep the channel open for the async sendResponse
+    }
+    sendResponse(result);
+    return undefined;
   };
   onMessageEvent.addListener(listener);
 }
