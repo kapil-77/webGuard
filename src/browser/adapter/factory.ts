@@ -6,10 +6,6 @@ import type { BrowserAdapter, BrowserId } from './interface';
 
 /**
  * Runtime adapter factory.
- *
- * Detection is synchronous and based on the user-agent string, which every
- * extension context (service worker, background page, content script, popup)
- * exposes. The adapter then resolves the `browser.*`/`chrome.*` namespace.
  */
 
 export function detectBrowserId(userAgent: string = navigator.userAgent): BrowserId {
