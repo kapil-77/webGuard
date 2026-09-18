@@ -288,3 +288,342 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* ---- threat surface ---- */
+
+.threat {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.threat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.threat-header::-webkit-details-marker {
+  display: none;
+}
+
+.threat-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.threat-title::before {
+  content: "◆ ";
+  color: var(--faint);
+  font-size: 8px;
+}
+
+.threat-legend {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.threat-legend-item[data-risk="safe"] {
+  color: var(--secure);
+}
+
+.threat-legend-item[data-risk="warning"] {
+  color: var(--caution);
+}
+
+.threat-legend-item[data-risk="risk"] {
+  color: var(--risk);
+}
+
+.threat-map {
+  position: relative;
+  margin: 4px 12px 2px;
+}
+
+.threat-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.threat-edge {
+  fill: none;
+  transition: stroke 180ms ease;
+}
+
+.threat-edge.is-active[data-risk="safe"] {
+  stroke: var(--secure);
+}
+
+.threat-edge.is-active[data-risk="warning"] {
+  stroke: var(--caution);
+}
+
+.threat-edge.is-active[data-risk="risk"] {
+  stroke: var(--risk);
+}
+
+.threat-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 76px;
+  max-width: 86px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #0d1117;
+  color: var(--text);
+  font: 700 10px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  animation: wg-node-in 340ms ease-out both;
+}
+
+.threat-node:hover {
+  color: #e8ebf2;
+}
+
+.threat-node-glyph {
+  font-size: 10px;
+}
+
+.threat-node-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.threat-node-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.threat-node[data-risk="safe"] .threat-node-glyph {
+  color: var(--secure);
+}
+
+.threat-node[data-risk="warning"] .threat-node-glyph {
+  color: var(--caution);
+}
+
+.threat-node[data-risk="risk"] .threat-node-glyph {
+  color: var(--risk);
+}
+
+.threat-node:hover[data-risk="safe"] {
+  border-color: var(--secure);
+}
+
+.threat-node:hover[data-risk="warning"] {
+  border-color: var(--caution);
+}
+
+.threat-node:hover[data-risk="risk"] {
+  border-color: var(--risk);
+}
+
+.threat-node.is-selected[data-risk="safe"] {
+  border-color: var(--secure);
+}
+
+.threat-node.is-selected[data-risk="warning"] {
+  border-color: var(--caution);
+}
+
+.threat-node.is-selected[data-risk="risk"] {
+  border-color: var(--risk);
+}
+
+.threat-node.threat-central {
+  min-width: 110px;
+  max-width: 128px;
+  padding: 5px 9px;
+  font-size: 11px;
+  background: #0b0e13;
+}
+
+.threat-central::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  pointer-events: none;
+  animation: wg-pulse 2.8s ease-in-out infinite;
+}
+
+.threat-central[data-risk="safe"]::after {
+  border-color: var(--secure);
+}
+
+.threat-central[data-risk="warning"]::after {
+  border-color: var(--caution);
+}
+
+.threat-central[data-risk="risk"]::after {
+  border-color: var(--risk);
+}
+
+@keyframes wg-node-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes wg-pulse {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.threat-more {
+  margin: 0;
+  padding: 0 12px 6px;
+  color: var(--faint);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.threat-detail {
+  margin: 0 12px 10px;
+  border-top: 1px solid var(--border);
+  background: #0d1117;
+  animation: wg-detail-in 260ms ease-out both;
+}
+
+.threat-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.threat-detail-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.threat-detail-status {
+  padding: 1px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.threat-detail-status[data-risk="safe"] {
+  border-color: var(--secure);
+  color: var(--secure);
+}
+
+.threat-detail-status[data-risk="warning"] {
+  border-color: var(--caution);
+  color: var(--caution);
+}
+
+.threat-detail-status[data-risk="risk"] {
+  border-color: var(--risk);
+  color: var(--risk);
+}
+
+.threat-detail-meta {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.threat-detail-label {
+  margin: 0;
+  padding: 0 12px 3px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.threat-detail-reasons {
+  margin: 0 0 7px;
+  padding: 0 12px;
+  list-style: none;
+}
+
+.threat-detail-reasons li {
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.threat-detail-findings {
+  margin: 0;
+  padding: 2px 12px 8px;
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@keyframes wg-detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.threat-header:focus-visible,
+.threat-node:focus-visible {
+  outline: 1px solid var(--muted);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .threat-node,
+  .threat-detail {
+    animation: none;
+  }
+
+  .threat-central::after {
+    animation: none;
+  }
+}

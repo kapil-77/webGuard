@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { SecurityReport } from '../../core/types/security-report';
 import { requestAnalysis } from './client';
+import { ThreatSurfaceView } from './threat-surface';
 import { ErrorView, FindingList, LoadingView, ScoreCard, UnsupportedView } from './views';
 
 /**
  * Popup entry (milestone 1: first working vertical slice).
  *
  * Renders the security report produced by the background: host, score,
- * status and an expandable findings list. All analysis happens in core/ — this
- * component only fetches (via client.ts) and renders. The "Security Pulse /
- * Threat Surface" experience is intentionally NOT built yet.
-
+ * status, the Threat Surface map (page + first/third-party origins) and an
+ * expandable findings list. All analysis happens in core/ — this component
+ * only fetches (via client.ts) and renders.
  */
 
 type PopupState =
@@ -73,6 +73,7 @@ function renderState(state: PopupState, onRetry: () => void) {
       return (
         <>
           <ScoreCard report={state.report} />
+          <ThreatSurfaceView report={state.report} />
           <FindingList findings={state.report.findings} />
         </>
       );
