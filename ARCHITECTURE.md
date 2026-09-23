@@ -29,7 +29,7 @@ Risk Scoring             scoreFindings() → 0..100 + status (SECURE/CAUTION/RIS
   ↓
 Security Report          SecurityReport (fully serializable)
   ↓
-Popup UI                 renders score, status, expandable findings
+Popup UI                 renders score, status, threat-surface map, findings
 ```
 
 Conceptual dependency diagram:
