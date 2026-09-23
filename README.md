@@ -136,7 +136,8 @@ webGuard/
 1. `npm.cmd run build`
 2. **Chrome/Edge/Brave:** `chrome://extensions` → Developer mode → Load
    unpacked → `dist/chromium`. Pin the WebGuard action, then open any website
-   and click it. Expected: host, score, status pill and 4 expandable findings.
+   and click it. Expected: host, score, status pill, the Threat Surface map and
+   4 expandable findings.
 3. **Firefox:** `about:debugging` → Load Temporary Add-on →
    `dist/firefox/manifest.json`.
 4. Good test pages: an https site (`https://example.com`), an http site
@@ -151,10 +152,10 @@ webGuard/
   contracts, tests, docs.
 - **M1 (done):** first working vertical slice — current page → adapter →
   normalized page data → 4 detectors → deterministic score/status → popup with
-  loading/unsupported/error/clean states.
-- **M2:** Security Pulse / Threat Surface UI (dark, technical, minimal);
-  persistence of last report to `storage.local` (restores the `storage`
-  permission with justification).
+  loading/unsupported/error/clean states plus a Threat Surface map (page,
+  first-party and third-party origins with risk indicators).
+- **M2:** persistence of the last report to `storage.local` (restores the
+  `storage` permission with justification).
 - **M3:** observation-only network telemetry via each browser's supported
   mechanism; headers/cookies detectors.
 - **M4:** packaging pipeline (`web-ext` for Firefox, Safari wrapper for macOS).

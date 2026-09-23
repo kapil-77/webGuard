@@ -2,7 +2,7 @@
   "name": "webguard",
   "version": "0.2.0",
   "private": true,
-  "description": "WebGuard â€” privacy-first, cross-browser web security intelligence browser extension.",
+  "description": "WebGuard — privacy-first, cross-browser web security intelligence browser extension.",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
