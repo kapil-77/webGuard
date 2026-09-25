@@ -26,7 +26,7 @@ export function ScoreCard({ report }: { report: SecurityReport }) {
   const { page, score } = report;
   return (
     <section className="score" aria-label="Security score">
-      <div className="score-host" title={page.url}>
+      <div className="score-host" title={displayUrl(page.url)}>
         {displayUrl(page.url)}
       </div>
       <div className="score-value">

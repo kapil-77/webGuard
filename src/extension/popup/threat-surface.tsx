@@ -7,6 +7,7 @@ import {
   buildThreatSurface,
   type ThreatNode,
   type ThreatRisk,
+  type ThreatSurface,
 } from './threat-surface-model';
 
 /**
@@ -90,7 +91,7 @@ export function ThreatSurfaceView({ report }: { report: SecurityReport }) {
         role="group"
         aria-label={`Threat surface of ${surface.central.hostname}`}
       >
-        <svg className="threat-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <svg className="threat-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {surface.firstParty.map((node, i) => (
             <line
               key={`edge:${node.id}`}
@@ -203,7 +204,7 @@ function NodeChip({ node, x, y, index, selected, onSelect, onHover }: NodeChipPr
   );
 }
 
-function renderCentralDetail(surface: ReturnType<typeof buildThreatSurface>) {
+function renderCentralDetail(surface: ThreatSurface) {
   const central = surface.central;
   return (
     <>
@@ -219,8 +220,8 @@ function renderCentralDetail(surface: ReturnType<typeof buildThreatSurface>) {
       </p>
       <p className="threat-detail-label">Report</p>
       <ul className="threat-detail-reasons">
-        {central.reasons.map((reason) => (
-          <li key={reason} className="threat-detail-reason">{reason}</li>
+        {central.reasons.map((reason, index) => (
+          <li key={`${index}:${reason}`} className="threat-detail-reason">{reason}</li>
         ))}
       </ul>
     </>
@@ -244,8 +245,8 @@ function renderNodeDetail(node: ThreatNode) {
       </p>
       <p className="threat-detail-label">{node.risk === 'safe' ? 'Why it\u2019s safe' : 'Why it was flagged'}</p>
       <ul className="threat-detail-reasons">
-        {node.reasons.map((reason) => (
-          <li key={reason} className="threat-detail-reason">{reason}</li>
+        {node.reasons.map((reason, index) => (
+          <li key={`${index}:${reason}`} className="threat-detail-reason">{reason}</li>
         ))}
       </ul>
       {node.findingTitles.length > 0 ? (
